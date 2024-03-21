@@ -604,6 +604,7 @@ static int read_from_pcm_loop(struct pcm_container *sndpcm, struct bat *bat)
 static int latencytest_process_input(struct pcm_container *sndpcm,
 		struct bat *bat)
 {
+#define latencytest_process_input_save_raw 1
 	int err = 0;
 	FILE *fp = NULL;
 	int bytes_read = 0;
@@ -619,12 +620,20 @@ static int latencytest_process_input(struct pcm_container *sndpcm,
 				bat->capture.file, err);
 		return err;
 	}
+#if defined(latencytest_process_input_save_raw)
+	log_tdm("capture raw %s"
+			", period_size: %d, period_bytes: %d"
+			", measure_skip_samples: %d\n",
+			bat->capture.file,
+			(int)sndpcm->period_size, (int)sndpcm->period_bytes,
+			bat->latency.measure_skip_samples);
+#else
 	/* leave space for file header */
 	if (fseek(fp, sizeof(struct wav_container), SEEK_SET) != 0) {
 		fclose(fp);
 		return err;
 	}
-
+#endif
 	bat->latency.is_capturing = true;
 
 	while (bytes_read < bytes_count) {
@@ -651,11 +660,14 @@ static int latencytest_process_input(struct pcm_container *sndpcm,
 		}
 
 		bytes_read += size;
+		bat->capture.facc += frames;
 	}
 
 	bat->latency.is_capturing = false;
 
+#if !defined(latencytest_process_input_save_raw)
 	update_wav_header(bat, fp, bytes_read);
+#endif
 
 	fclose(fp);
 	return err;

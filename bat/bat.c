@@ -336,6 +336,9 @@ _("Usage: alsabat [-options]...\n"
 "      --roundtriplatency round trip latency mode\n"
 "      --snr-db=#         noise detect threshold, in SNR(dB)\n"
 "      --snr-pc=#         noise detect threshold, in noise percentage(%%)\n"
+"      --silenceartifact=#\n"
+"                         round trip latency mode, add silent period before\n"
+"                         play\n"
 ));
 	fprintf(bat->log, _("Recognized sample formats are: "));
 	fprintf(bat->log, _("U8 S16_LE S24_3LE S32_LE\n"));
@@ -395,6 +398,7 @@ static void parse_arguments(struct bat *bat, int argc, char *argv[])
 		{"local",    0, 0, OPT_LOCAL},
 		{"standalone", 0, 0, OPT_STANDALONE},
 		{"roundtriplatency", 0, 0, OPT_ROUNDTRIPLATENCY},
+		{"silenceartifact", 1, 0, OPT_SILENCEARTIFACT},
 		{"snr-db",   1, 0, OPT_SNRTHD_DB},
 		{"snr-pc",   1, 0, OPT_SNRTHD_PC},
 		{0, 0, 0, 0}
@@ -420,6 +424,9 @@ static void parse_arguments(struct bat *bat, int argc, char *argv[])
 			break;
 		case OPT_ROUNDTRIPLATENCY:
 			bat->roundtriplatency = true;
+			break;
+		case OPT_SILENCEARTIFACT:
+			bat->latency.silence_artifact_def = strtol(optarg, NULL, 0);
 			break;
 		case OPT_SNRTHD_DB:
 			get_snr_thd_db(bat, optarg);

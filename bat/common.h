@@ -13,6 +13,8 @@
  *
  */
 
+#include <sys/time.h>
+
 #define TEMP_RECORD_FILE_NAME		"/tmp/bat.wav.XXXXXX"
 #define DEFAULT_DEV_NAME		"default"
 
@@ -25,6 +27,8 @@
 #define OPT_ROUNDTRIPLATENCY		(OPT_BASE + 6)
 #define OPT_SNRTHD_DB			(OPT_BASE + 7)
 #define OPT_SNRTHD_PC			(OPT_BASE + 8)
+#define OPT_SILENCEARTIFACT			(OPT_BASE + 9)
+
 
 #define COMPOSE(a, b, c, d)		((a) | ((b)<<8) | ((c)<<16) | ((d)<<24))
 #define WAV_RIFF			COMPOSE('R', 'I', 'F', 'F')
@@ -56,8 +60,10 @@
 /* default period size for tinyalsa */
 #define TINYALSA_PERIODSIZE			1024
 
+#define LATENCY_TEST_DB_NUMBER			500
+#define LATENCY_TEST_MAX			2
 #define LATENCY_TEST_NUMBER			5
-#define LATENCY_TEST_TIME_LIMIT			25
+#define LATENCY_TEST_TIME_LIMIT			40
 #define DIV_BUFFERSIZE			2
 
 #define EBATBASE			1000
@@ -157,6 +163,7 @@ enum _bat_op_mode {
 enum latency_state {
 	LATENCY_STATE_COMPLETE_FAILURE = -1,
 	LATENCY_STATE_COMPLETE_SUCCESS = 0,
+	LATENCY_STATE_MEASURE_FOR_1_SECOND_SKIP_LEAD,
 	LATENCY_STATE_MEASURE_FOR_1_SECOND,
 	LATENCY_STATE_PLAY_AND_LISTEN,
 	LATENCY_STATE_WAITING,
@@ -167,6 +174,7 @@ struct pcm {
 	unsigned int device_tiny;
 	char *device;
 	char *file;
+	size_t facc;
 	enum _bat_op_mode mode;
 	void *(*fct)(struct bat *);
 };
@@ -186,15 +194,23 @@ struct sin_generator {
 struct roundtrip_latency {
 	int number;
 	enum latency_state state;
+	enum latency_state latest_playback_state;
 	float result[LATENCY_TEST_NUMBER];
 	int final_result;
 	int samples;
+	int measure_skip_samples;
+	int wait_samples;
 	float sum;
 	int threshold;
+	float measure_avgdb;
+	float test_db[LATENCY_TEST_DB_NUMBER];
+	int test_db_num;
 	int error;
 	bool is_capturing;
 	bool is_playing;
 	bool xrun_error;
+	int silence_artifact_def;
+	int silence_artifact;
 };
 
 struct noise_analyzer {
@@ -259,3 +275,54 @@ int read_wav_header(struct bat *, char *, FILE *, bool);
 int write_wav_header(FILE *, struct wav_container *, struct bat *);
 int update_wav_header(struct bat *, FILE *, int);
 int generate_input_data(struct bat *, void *, int, int);
+
+
+/** Subtraction for time value. */
+#define ALOE_TIMESEC_SUB(_a_sec, _a_subsec, _b_sec, _b_subsec, _c_sec, \
+		_c_subsec, _subscale) \
+	if ((_a_subsec) < (_b_subsec)) { \
+		(_c_sec) = (_a_sec) - (_b_sec) - 1; \
+		(_c_subsec) = (_subscale) + (_a_subsec) - (_b_subsec); \
+	} else { \
+		(_c_sec) = (_a_sec) - (_b_sec); \
+		(_c_subsec) = (_a_subsec) - (_b_subsec); \
+	}
+
+unsigned long log_td(int modex, struct timeval *tv);
+unsigned long log_ts(struct timeval *tv);
+void _dump_test_db_num(struct bat *bat, int max);
+#if 0 // debug
+#  define log_m(_msg, _args...) do { \
+	struct timeval tv; \
+	log_ts(&tv); \
+	fprintf(stdout, "[%ld.%06ld][%s][#%d]" _msg, \
+			(unsigned long)tv.tv_sec, (unsigned long)tv.tv_usec, \
+			__func__, __LINE__, ##_args); \
+	fflush(stdout); \
+} while(0);
+#  define log_tdm(_msg, _args...) do { \
+	struct timeval tv; \
+	log_td(0, &tv); \
+	fprintf(stdout, "[%ld.%06ld][%s][#%d]" _msg, \
+			(unsigned long)tv.tv_sec, (unsigned long)tv.tv_usec, \
+			__func__, __LINE__, ##_args); \
+	fflush(stdout); \
+} while(0);
+
+#  define log_tdm2(_msg, _args...) do { \
+	struct timeval tv; \
+	log_td(0, &tv); \
+	fprintf(stdout, "[%ld.%06ld][%s][#%d][facc %d(%f)]" _msg, \
+			(unsigned long)tv.tv_sec, (unsigned long)tv.tv_usec, \
+			__func__, __LINE__, \
+			bat->capture.facc, (double)bat->capture.facc / bat->rate, \
+			##_args); \
+	fflush(stdout); \
+} while(0);
+#  define dump_test_db_num(...) _dump_test_db_num(__VA_ARGS__)
+#else
+#  define log_m(...)
+#  define log_tdm(...)
+#  define log_tdm2(...)
+#  define dump_test_db_num(...)
+#endif

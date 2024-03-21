@@ -263,3 +263,39 @@ int generate_input_data(struct bat *bat, void *buffer, int bytes, int frames)
 
 	return 0;
 }
+
+unsigned long log_td(int modex, struct timeval *tv) {
+	int idx = modex & 0xf;
+	static struct timeval ts[0xf + 1];
+	struct timeval _tv;
+
+	if (modex & 0xf0) {
+		// set
+		if (tv) {
+			ts[idx] = *tv;
+		} else {
+			// set now
+			log_ts(&ts[idx]);
+		}
+		return 0ul;
+	}
+	log_ts(&_tv);
+	if (ts[idx].tv_sec == 0 && ts[idx].tv_usec == 0) {
+		ts[idx] = _tv;
+		log_ts(&_tv);
+	}
+	ALOE_TIMESEC_SUB(_tv.tv_sec, _tv.tv_usec,
+			ts[idx].tv_sec, ts[idx].tv_usec,
+			_tv.tv_sec, _tv.tv_usec,
+			1000000);
+	if (tv) *tv = _tv;
+	return _tv.tv_sec * 1000000 + _tv.tv_usec;
+}
+
+unsigned long log_ts(struct timeval *tv) {
+	struct timeval _tv;
+
+	gettimeofday(&_tv,NULL);
+	if (tv) *tv = _tv;
+	return _tv.tv_sec * 1000000 + _tv.tv_usec;
+}
