@@ -316,7 +316,7 @@ int handleinput(struct bat *bat, void *buffer, int frames)
 
 //		log_tdm("LATENCY_STATE_WAITING, samples: %d\n", (int)bat->latency.samples);
 
-		if (bat->latency.samples > bat->rate * 3) {
+		if (bat->latency.samples > bat->rate * LATENCY_TEST_MAX) {
 			/* 3 second elapsed, start over */
 			bat->latency.samples = 0;
 			bat->latency.sum = 0;
