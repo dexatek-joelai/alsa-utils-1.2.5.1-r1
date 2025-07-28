@@ -28,7 +28,7 @@
 #define OPT_SNRTHD_DB			(OPT_BASE + 7)
 #define OPT_SNRTHD_PC			(OPT_BASE + 8)
 #define OPT_SILENCEARTIFACT			(OPT_BASE + 9)
-
+#define OPT_LATENCYTHD_DB		(OPT_BASE + 10)
 
 #define COMPOSE(a, b, c, d)		((a) | ((b)<<8) | ((c)<<16) | ((d)<<24))
 #define WAV_RIFF			COMPOSE('R', 'I', 'F', 'F')
@@ -241,6 +241,7 @@ struct bat {
 	char *debugplay;		/* path name to store playback signal */
 	bool standalone;		/* enable to bypass analysis */
 	bool roundtriplatency;		/* enable round trip latency */
+	float latency_thd_db;
 
 	struct pcm playback;
 	struct pcm capture;

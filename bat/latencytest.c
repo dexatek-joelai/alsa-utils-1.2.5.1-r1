@@ -223,7 +223,7 @@ static void calculate_threshold(struct bat *bat)
 	   a threshold value 16 decibels higher than the average loudness */
 	average = bat->latency.sum / bat->latency.samples / 32767.0f;
 	bat->latency.measure_avgdb = 20.0f * log10f(average);
-	reference = bat->latency.measure_avgdb + 16.0f;
+	reference = bat->latency.measure_avgdb + bat->latency_thd_db;
 	bat->latency.threshold = (int) (powf(10.0f, reference / 20.0f)
 						* 32767.0f);
 }
