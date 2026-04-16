@@ -75,6 +75,22 @@ static void get_snr_thd_pc(struct bat *bat, char *thd)
 	bat->snr_thd_db = 20.0 * log10f(100.0 / thd_pc);
 }
 
+static void get_latency_thd_db(struct bat *bat, char *thd)
+{
+	int err;
+	float latency_thd_db;
+	char *ptrf;
+
+	latency_thd_db = strtof(thd, &ptrf);
+	err = -errno;
+	if (latency_thd_db <= 0.0 || latency_thd_db >= 50.0) {
+		fprintf(bat->err, _("Invalid threshold '%s':%d\n"), thd, err);
+		exit(EXIT_FAILURE);
+	}
+	bat->latency_thd_db = latency_thd_db;
+	log_m("bat->latency_thd_db: %f\n", bat->latency_thd_db);
+}
+
 static int get_duration(struct bat *bat)
 {
 	int err;
@@ -125,6 +141,8 @@ static void get_sine_frequencies(struct bat *bat, char *freq)
 		bat->target_freq[0] = atof(optarg);
 		bat->target_freq[1] = atof(tmp1 + 1);
 	}
+	log_m("bat->target_freq[%d]: %f\n", 0, bat->target_freq[0]);
+	log_m("bat->target_freq[%d]: %f\n", 1, bat->target_freq[1]);
 }
 
 static void get_format(struct bat *bat, char *optarg)
@@ -338,6 +356,7 @@ _("Usage: alsabat [-options]...\n"
 "      --snr-pc=#         noise detect threshold, in noise percentage(%%)\n"
 "      --silenceartifact=#\n"
 "                         round trip latency mode, add silent period before\n"
+"      --latency-db=#     latency threshold in dB\n"
 "                         play\n"
 ));
 	fprintf(bat->log, _("Recognized sample formats are: "));
@@ -370,6 +389,7 @@ static void set_defaults(struct bat *bat)
 	bat->buffer_size = 0;
 	bat->period_size = 0;
 	bat->roundtriplatency = false;
+	bat->latency_thd_db = 16.0;
 #ifdef HAVE_LIBTINYALSA
 	bat->channels = 2;
 	bat->playback.fct = &playback_tinyalsa;
@@ -401,6 +421,7 @@ static void parse_arguments(struct bat *bat, int argc, char *argv[])
 		{"silenceartifact", 1, 0, OPT_SILENCEARTIFACT},
 		{"snr-db",   1, 0, OPT_SNRTHD_DB},
 		{"snr-pc",   1, 0, OPT_SNRTHD_PC},
+		{"latency-db",   1, 0, OPT_LATENCYTHD_DB},
 		{0, 0, 0, 0}
 	};
 
@@ -433,6 +454,9 @@ static void parse_arguments(struct bat *bat, int argc, char *argv[])
 			break;
 		case OPT_SNRTHD_PC:
 			get_snr_thd_pc(bat, optarg);
+			break;
+		case OPT_LATENCYTHD_DB:
+			get_latency_thd_db(bat, optarg);
 			break;
 		case 'D':
 			if (bat->playback.device == NULL)
